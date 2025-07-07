@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>シミュレーション設定ページ</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .object-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #f9f9f9;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    input[type="number"] {
+      width: 80px;
+      margin-left: 4px;
+    }
+
+    h4 {
+      margin-top: 10px;
+      margin-bottom: 4px;
+      font-size: 1em;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🌐 グローバルパラメータ設定</h2>
+  <div id="paramContainer"></div>
+  <h3>🛠 操作</h3>
+  <button onclick="startSimulation()">▶ シミュレーション開始</button>
+  <button onclick="saveToFile()">💾 設定をファイル保存</button>
+  <input type="file" id="fileInput" accept=".json" onchange="loadFromFile()" />
+  <br>
+
+  <script>
+    const globalParamDefs = [
+      {
+        section: "流体関係パラメータ",
+        params: [
+          { id: 'dt', label: '時間ステップ', value: 0.01, step: 0.001 },
+          { id: 'gravityX', label: '重力x', value: 0.0, step: 1.0 },
+          { id: 'gravityY', label: '重力y', value: 0.0, step: 1.0 },
+          { id: 'h', label: '影響半径', value: 5.0, step: 0.1 },
+          { id: 'mass', label: '質量', value: 0.5, step: 0.1 },
+          { id: 'rho0', label: '基準密度', value: 1.0, step: 0.1 },
+          { id: 'B', label: '圧力定数', value: 10000, step: 100 },
+          { id: 'nB', label: '近圧力定数', value: 5, step: 0.1 },
+          { id: 'viscosity', label: '粘性', value: 0.0, step: 0.1 },
+          { id: 'alpha', label: '表面張力', value: 0.2, step: 0.1 },
+          { id: 'scale', label: 'スケール', value: 1.0, step: 0.1 },
+        ]
+      },
+      {
+        section: "色描画パラメータ",
+        params: [
+          { id: 'colDecay', label: '色減衰', value: 40.0, step: 1 },
+          { id: 'colDiffuse', label: '色拡散', value: 0.8, step: 0.1 },
+          { id: 'TOON_THRESHOLD', label: '色閾値', value: 0.6, step: 0.01 },
+        ]
+      },
+      {
+        section: "質量変化パラメータ",
+        params: [
+          { id: 'massGrowTime', label: '質量成長時間', value: 0.8, step: 0.1 },
+          { id: 'massGrowSlope', label: '質量成長速度', value: 1.0, step: 0.1 },
+          { id: 'massDecay', label: '質量減衰', value: 1.4, step: 0.1 },
+          { id: 'massCutoff', label: '質量カットオフ', value: 0.01, step: 0.01 },
+        ]
+      },
+      {
+        section: "速度変化（直線）パラメータ",
+        params: [
+          { id: 'velDecay', label: '速度減衰', value: 0.2, step: 0.1 },
+          { id: 'partMinVel', label: '最小速度', value: 10, step: 1 },
+          { id: 'lastInitVel', label: '最終スポーン速度', value: 0.8, step: 0.1 },
+          { id: 'flowOutVelStr', label: '外向き流れの強さ', value: 0.5, step: 0.01 },
+          { id: 'flowStCont', label: '先端にかかる係数', value: 0.1, step: 0.01 },
+          { id: 'flowVelMean', label: 'ストリーム初速平均', value: 200, step: 10 },
+          { id: 'flowVelRnd', label: 'ストリーム初速ばらつき', value: 150, step: 10 },
+        ]
+      },
+      {
+        section: "速度変化（回転）パラメータ",
+        params: [
+          { id: 'crossFactor', label: '回転速度', value: 0.01, step: 0.01 },
+          { id: 'crossTime', label: '回転時間', value: 0.6, step: 0.1 },
+          { id: 'flowYMaxMean', label: 'ストリームカーブ位置平均', value: 0.2, step: 0.01 },
+          { id: 'flowYMaxRnd', label: 'ストリームカーブ位置ばらつき', value: 0.2, step: 0.01 },
+        ]
+      },
+      {
+        section: "スポーンパラメータ",
+        params: [
+          { id: 'sPosX', label: 'スポーン座標x', value: 0.5, step: 0.01 },
+          { id: 'sPosY', label: 'スポーン座標y', value: 0.5, step: 0.01 },
+          { id: 'sPosA', label: 'スポーン座標各ストリームのずれ', value: 0.2, step: 0.1 },
+          { id: 'spawnFineAdjustN', label: '水平方向の粒子間距離の補正', value: 0.05, step: 0.01 },
+          { id: 'spawnFineAdjustV', label: '垂直方向の粒子間距離の補正', value: 1.2, step: 0.01 },
+        ]
+      },
+      {
+        section: "ストリームパラメータ",
+        params: [
+          { id: 'flowNum', label: 'ストリーム数', value: 40, step: 1 },
+          { id: 'flowTimeMean', label: 'ストリーム長さ平均', value: 0.12, step: 0.01 },
+          { id: 'flowTimeRnd', label: 'ストリーム長さばらつき', value: 0.04, step: 0.01 },
+          { id: 'flowThMean', label: 'ストリーム角度平均', value: 0.0, step: 0.01 },
+          { id: 'flowThRnd', label: 'ストリーム角度ばらつき', value: 0.4, step: 0.01 },
+          { id: 'flowBold', label: 'ストリーム太さ', value: 3.2, step: 0.1 },
+          { id: 'noiseLevel', label: 'ノイズレベル', value: 0.2, step: 0.01 },
+          { id: 'noiseFreq', label: 'ノイズ周波数', value: 2000, step: 10 },
+        ]
+      },
+      {
+        section: "画角パラメータ",
+        params: [
+          { id: 'phi', label: '画面全体の傾き', value: 0, step: 0.01 },
+          { id: 'th', label: '画面全体の回転', value: 0, step: 0.01 },
+          { id: 'thRange', label: '各ストリームの傾きばらつき', value: 2.6, step: 0.1 },
+        ]
+      }
+    ];
+
+
+    function createParamInputs() {
+      const container = document.getElementById('paramContainer');
+
+      globalParamDefs.forEach(group => {
+        const sectionLabel = document.createElement('h4');
+        sectionLabel.textContent = `・${group.section}`;
+        container.appendChild(sectionLabel);
+
+        group.params.forEach(param => {
+          const label = document.createElement('label');
+          label.innerHTML = `${param.label} (${param.id}): `;
+
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.id = `global-${param.id}`;
+          input.value = param.value;
+          input.step = param.step;
+
+          label.appendChild(input);
+          container.appendChild(label);
+        });
+
+        container.appendChild(document.createElement('br'));
+      });
+    }
+
+    function getGlobalParams() {
+      const result = {};
+      globalParamDefs.forEach(group => {
+        group.params.forEach(param => {
+          result[param.id] = Number(document.getElementById(`global-${param.id}`).value);
+        });
+      });
+      return result;
+    }
+
+    function setGlobalParams(params) {
+      globalParamDefs.forEach(group => {
+        group.params.forEach(param => {
+          const el = document.getElementById(`global-${param.id}`);
+          if (el) el.value = params[param.id] ?? param.value;
+        });
+      });
+    }
+    
+    window.onload = () => {
+      createParamInputs();
+    };
+
+    function startSimulation() {
+      const globalParams = getGlobalParams();
+      const fullData = { global: globalParams };
+      localStorage.setItem('simulationParams', JSON.stringify(fullData));
+      window.location.href = 'simulation.html';
+    }
+
+    function saveToFile() {
+      const globalParams = getGlobalParams();
+      const fullData = { global: globalParams };
+
+      const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'simulation_config.json';
+      a.click();
+
+      URL.revokeObjectURL(url);
+    }
+
+    function loadFromFile() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          setGlobalParams(data.global || {});
+        } catch (err) {
+          alert('読み込みエラー: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+
+</body>
+</html>

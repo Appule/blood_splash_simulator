@@ -1,0 +1,56 @@
+@import url(https://webgpufundamentals.org/webgpu/resources/webgpu-lesson.css);
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  background: #000;
+  user-select: none
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}
+
+.param-window {
+  position: absolute;
+  width: 200px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid #aaa;
+  padding: 10px;
+  box-shadow: 2px 2px 8px rgba(255, 255, 255, 0.3);
+  display: none;
+  overflow: hidden;
+  resize: none;
+  z-index: 3;
+}
+
+.param-window .scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+#toggleButton {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  padding: 10px 15px;
+  z-index: 99999;
+
+  background: #009ddb;
+}
+
+button:hover {
+  filter: brightness(1.2);
+}
+
+button.active {
+  filter: brightness(0.8);
+}
